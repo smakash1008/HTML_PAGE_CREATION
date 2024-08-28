@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS ECS Events Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .container {
+            float: right;
+            width: 40%;
+            height: 450px;
+            margin-top: 120px;
+            margin-right: 35px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);   
+        }
+
+        h1 {
+            text-align: center;
+            color: #30a782;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+
+        select, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        #profile-select{
+            margin-top: 35px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        #cluster-select{
+            margin-top: 35px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        #profile-select:hover{
+            text-decoration: underline;
+        }
+
+        #cluster-select:hover{
+            text-decoration: underline;
+        }
+
+        button {
+            background-color: #30a782;
+            color: white;
+            cursor: pointer;
+            width: 20%;
+            margin-left: 40%;
+            margin-right: 40%;
+            text-align: center;
+            margin-top: 70px;
+            font-weight: bolder;
+        }
+
+        button:hover {
+            background-color: #30a782;
+        }
+
+        .results {
+            margin-top: 20px;
+        }
+
+        .service-container {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #e6f2ff;
+        }
+
+        .service-container h2 {
+            color: #0066cc;
+            margin-top: 0;
+        }
+
+        .events {
+            margin-top: 10px;
+        }
+
+        .event-item {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            background-color: #ffffff;
+        }
+
+        .event-item:nth-child(even) {
+            background-color: #f7f7f7;
+        }
+
+        .event-timestamp {
+            font-weight: bold;
+        }
+
+        .event-message {
+            flex: 1;
+            margin-left: 10px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            background-color: rgba(255, 255, 255, 0.8);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .Logo {
+            position: absolute;
+            top: 10px;
+            right: 30px;
+            z-index: 1000;
+            width: 150px;
+            padding-right: 20px;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AWS ECS Events Viewer</h1>
+
+        <label for="profile-select">AWS Profile Name:</label>
+        <select id="profile-select">
+            <option value="" disabled selected>Select a profile</option>
+            <!-- Profiles will be dynamically populated here -->
+        </select>
+
+        <label for="cluster-select">ECS Cluster Name:</label>
+        <select id="cluster-select" disabled>
+            <option value="" disabled selected>Select a cluster</option>
+            <!-- Clusters will be dynamically populated here -->
+        </select>
+
+        <button id="get-events-btn" disabled>Get Events</button>
+
+        <div class="results" id="results">
+            <!-- Results will be dynamically populated here -->
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        Loading, please wait...
+    </div>
+    <img src="NM_Logo.png" alt="Logo_Image" class="Logo">
+
+    <div class="image-container">
+        <img src="Image_NN.jpg" alt="Image_Display" width="700px" height="639px">
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const profileSelect = document.getElementById('profile-select');
+            const clusterSelect = document.getElementById('cluster-select');
+            const getEventsBtn = document.getElementById('get-events-btn');
+            const resultsDiv = document.getElementById('results');
+            const loading = document.getElementById('loading');
+
+            // Fetch and populate AWS profiles
+            fetch('/profiles')
+                .then(response => response.json())
+                .then(profiles => {
+                    profiles.forEach(profile => {
+                        const option = document.createElement('option');
+                        option.value = profile;
+                        option.textContent = profile;
+                        profileSelect.appendChild(option);
+                    });
+                });
+
+            profileSelect.addEventListener('change', function() {
+                const profileName = this.value;
+                clusterSelect.disabled = true;
+                getEventsBtn.disabled = true;
+                resultsDiv.innerHTML = '';
+
+                fetch('/clusters', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ profile_name: profileName }),
+                })
+                .then(response => response.json())
+                .then(clusters => {
+                    clusterSelect.innerHTML = '<option value="" disabled selected>Select a cluster</option>';
+                    clusters.forEach(cluster => {
+                        const option = document.createElement('option');
+                        option.value = cluster;
+                        option.textContent = cluster;
+                        clusterSelect.appendChild(option);
+                    });
+                    clusterSelect.disabled = false;
+                });
+            });
+
+            clusterSelect.addEventListener('change', function() {
+                getEventsBtn.disabled = false;
+            });
+
+            getEventsBtn.addEventListener('click', function() {
+                const profileName = profileSelect.value;
+                const clusterName = clusterSelect.value;
+
+                if (!profileName || !clusterName) {
+                    return;
+                }
+
+                resultsDiv.innerHTML = '';
+                loading.style.display = 'block';
+
+                fetch('/events', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ profile_name: profileName, cluster_name: clusterName }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    loading.style.display = 'none';
+                    for (const serviceName in data) {
+                        const serviceContainer = document.createElement('div');
+                        serviceContainer.className = 'service-container';
+
+                        const serviceHeader = document.createElement('h2');
+                        serviceHeader.textContent = `${serviceName} - Desired: ${data[serviceName].desiredCount} Running: ${data[serviceName].runningCount}`;
+                        serviceContainer.appendChild(serviceHeader);
+
+                        const eventsContainer = document.createElement('div');
+                        eventsContainer.className = 'events';
+
+                        data[serviceName].events.forEach(event => {
+                            const eventItem = document.createElement('div');
+                            eventItem.className = 'event-item';
+
+                            const timestampDiv = document.createElement('div');
+                            timestampDiv.className = 'event-timestamp';
+                            timestampDiv.textContent = event.createdAt;
+
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = 'event-message';
+                            messageDiv.textContent = event.message;
+
+                            eventItem.appendChild(timestampDiv);
+                            eventItem.appendChild(messageDiv);
+
+                            eventsContainer.appendChild(eventItem);
+                        });
+
+                        serviceContainer.appendChild(eventsContainer);
+                        resultsDiv.appendChild(serviceContainer);
+                    }
+                })
+                .catch(error => {
+                    loading.style.display = 'none';
+                    console.error('Error fetching events:', error);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
